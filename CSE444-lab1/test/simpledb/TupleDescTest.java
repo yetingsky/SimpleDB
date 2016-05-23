@@ -18,6 +18,8 @@ public class TupleDescTest extends SimpleDbTestBase {
 
         td1 = Utility.getTupleDesc(1, "td1");
         td2 = Utility.getTupleDesc(2, "td2");
+        
+        assertEquals("INT_TYPE(td20), INT_TYPE(td21)\n", td2.toString());
 
         assertEquals(1, td1.numFields());
         assertEquals(2, td2.numFields());

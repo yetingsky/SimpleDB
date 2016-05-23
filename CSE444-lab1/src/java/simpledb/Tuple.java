@@ -94,7 +94,20 @@ public class Tuple implements Serializable {
      */
     public String toString() {
         // some code goes here
-        throw new UnsupportedOperationException("Implement this");
+        StringBuilder result = new StringBuilder();
+        for (int i = 0; i < fields.length; i++) {
+            if (fields[i] != null) {
+                result.append(fields[i].toString());
+            } else {
+                result.append("null");
+            }
+            if (i < fields.length - 1) {
+                result.append("\t");
+            } else {
+                result.append("\n");
+            }
+        }
+        return String.valueOf(result);
     }
     
     /**

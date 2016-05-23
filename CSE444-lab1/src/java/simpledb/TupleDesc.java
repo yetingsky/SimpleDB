@@ -12,6 +12,8 @@ import java.util.*;
  *
  */
 public class TupleDesc implements Serializable {
+    
+    private static String UNNAME = "";
 
     private int size;
     ArrayList<TDItem> items;
@@ -75,7 +77,7 @@ public class TupleDesc implements Serializable {
             if (fieldAr != null && i < fieldAr.length) {
                 items.add(new TDItem(t, fieldAr[i]));
             } else {
-                items.add(new TDItem(t, null));
+                items.add(new TDItem(t, UNNAME));
             }
             size += t.getLen();
         }
@@ -261,6 +263,16 @@ public class TupleDesc implements Serializable {
      */
     public String toString() {
         // some code goes here
-        return "";
+        StringBuilder result = new StringBuilder();
+        for (int i = 0; i < numFields(); i++) {
+            TDItem item = getField(i);
+            result.append(item.fieldType.toString() + "(" + item.fieldName + ")");
+            if (i < numFields() - 1) {
+                result.append(", ");
+            } else {
+                result.append("\n");
+            }
+        }
+        return String.valueOf(result);
     }
 }
