@@ -10,6 +10,10 @@ import java.util.Iterator;
  * with the data for each field.
  */
 public class Tuple implements Serializable {
+    
+    private TupleDesc td;
+    private Field[] fields;   // field's type must same as TupleDesc
+    private RecordId recordID;
 
     private static final long serialVersionUID = 1L;
 
@@ -22,6 +26,8 @@ public class Tuple implements Serializable {
      */
     public Tuple(TupleDesc td) {
         // some code goes here
+        this.td = td;
+        fields = new Field[td.numFields()];
     }
 
     /**
@@ -29,7 +35,7 @@ public class Tuple implements Serializable {
      */
     public TupleDesc getTupleDesc() {
         // some code goes here
-        return null;
+        return td;
     }
 
     /**
@@ -38,7 +44,7 @@ public class Tuple implements Serializable {
      */
     public RecordId getRecordId() {
         // some code goes here
-        return null;
+        return recordID;
     }
 
     /**
@@ -49,6 +55,7 @@ public class Tuple implements Serializable {
      */
     public void setRecordId(RecordId rid) {
         // some code goes here
+        recordID = rid;
     }
 
     /**
@@ -61,6 +68,8 @@ public class Tuple implements Serializable {
      */
     public void setField(int i, Field f) {
         // some code goes here
+        assert (i >= 0 && i < fields.length);
+        fields[i] = f;
     }
 
     /**
@@ -71,7 +80,8 @@ public class Tuple implements Serializable {
      */
     public Field getField(int i) {
         // some code goes here
-        return null;
+        assert (i >= 0 && i < fields.length);
+        return fields[i];
     }
 
     /**
@@ -94,7 +104,7 @@ public class Tuple implements Serializable {
     public Iterator<Field> fields()
     {
         // some code goes here
-        return null;
+        return Arrays.asList(fields).iterator();
     }
     
     /**
@@ -102,6 +112,6 @@ public class Tuple implements Serializable {
      * */
     public void resetTupleDesc(TupleDesc td)
     {
-        // some code goes here
+        this.td = td;
     }
 }
