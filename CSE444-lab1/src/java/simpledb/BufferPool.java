@@ -1,7 +1,8 @@
 package simpledb;
 
 import java.io.*;
-
+import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -25,6 +26,10 @@ public class BufferPool {
     other classes. BufferPool should use the numPages argument to the
     constructor instead. */
     public static final int DEFAULT_PAGES = 50;
+    
+    private Map<PageId, Page> pages;
+    private int size;
+    private int numPages;
 
     /**
      * Creates a BufferPool that caches up to numPages pages.
@@ -33,6 +38,9 @@ public class BufferPool {
      */
     public BufferPool(int numPages) {
         // some code goes here
+        pages = new ConcurrentHashMap<>();
+        size = 0;
+        this.numPages = numPages;
     }
     
     public static int getPageSize() {
@@ -59,10 +67,30 @@ public class BufferPool {
      * @param pid the ID of the requested page
      * @param perm the requested permissions on the page
      */
-    public  Page getPage(TransactionId tid, PageId pid, Permissions perm)
+    public Page getPage(TransactionId tid, PageId pid, Permissions perm)
         throws TransactionAbortedException, DbException {
         // some code goes here
-        return null;
+        if (pages.containsKey(pid)) {
+            return pages.get(pid);
+        }
+        
+        if (size >= numPages) {
+            // just throw exception
+            // need eviction policy later
+            throw new DbException("more than numPages requests are made for different pages");
+        } else {
+            try {
+                DbFile file = Database.getCatalog().getDatabaseFile(pid.getTableId());
+                Page page = file.readPage(pid);
+                pages.put(pid, page);
+                size++;
+                return page;
+            } catch (NoSuchElementException e) {
+                throw new DbException("no page in database");
+            } catch (IllegalArgumentException e) {  
+                throw new DbException("no page in database");
+            }
+        }
     }
 
     /**
