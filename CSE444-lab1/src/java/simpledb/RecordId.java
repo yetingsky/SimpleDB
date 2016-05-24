@@ -7,6 +7,9 @@ import java.io.Serializable;
  * specific table.
  */
 public class RecordId implements Serializable {
+    
+    private PageId pid;
+    private int tupleno;
 
     private static final long serialVersionUID = 1L;
 
@@ -21,6 +24,8 @@ public class RecordId implements Serializable {
      */
     public RecordId(PageId pid, int tupleno) {
         // some code goes here
+        this.pid = pid;
+        this.tupleno = tupleno;
     }
 
     /**
@@ -28,7 +33,7 @@ public class RecordId implements Serializable {
      */
     public int tupleno() {
         // some code goes here
-        return 0;
+        return tupleno;
     }
 
     /**
@@ -36,7 +41,7 @@ public class RecordId implements Serializable {
      */
     public PageId getPageId() {
         // some code goes here
-        return null;
+        return pid;
     }
 
     /**
@@ -48,7 +53,11 @@ public class RecordId implements Serializable {
     @Override
     public boolean equals(Object o) {
         // some code goes here
-        throw new UnsupportedOperationException("implement this");
+        if (!(o instanceof RecordId))
+            return false;
+        RecordId rid = (RecordId) o;
+        return tupleno == rid.tupleno &&
+               pid.equals(rid.pid);
     }
 
     /**
@@ -60,8 +69,10 @@ public class RecordId implements Serializable {
     @Override
     public int hashCode() {
         // some code goes here
-        throw new UnsupportedOperationException("implement this");
-
+        int result = 17;
+        result += 31 * result + pid.hashCode();
+        result += 31 * result + tupleno;
+        return result;
     }
 
 }
