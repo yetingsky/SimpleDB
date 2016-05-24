@@ -77,13 +77,7 @@ public class HeapPage implements Page {
      */
     private int getHeaderSize() {        
         // some code goes here
-        int float_temp = getNumTuples() / 8;
-        int int_temp = ((int) float_temp);
-        if (float_temp > int_temp) {
-            return int_temp + 1;
-        } else {
-            return int_temp;
-        }
+        return (int) Math.ceil(((double) getNumTuples()) / 8);
     }
     
     /** Return a view of this page before it was modified

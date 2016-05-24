@@ -70,9 +70,9 @@ public class HeapFile implements DbFile {
         // some code goes here
         try {
             RandomAccessFile rf = new RandomAccessFile(f, "r");
-            int size = BufferPool.PAGE_SIZE;
-            byte[] data = new byte[size];
-            rf.read(data, pid.pageNumber() * size, size);
+            byte[] data = new byte[BufferPool.PAGE_SIZE];
+            rf.seek(pid.pageNumber() * BufferPool.PAGE_SIZE);
+            rf.read(data, 0, BufferPool.PAGE_SIZE);
             rf.close();
             return new HeapPage((HeapPageId)pid, data);
         } catch (IOException e) {

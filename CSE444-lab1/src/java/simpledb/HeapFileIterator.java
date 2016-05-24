@@ -69,6 +69,8 @@ public class HeapFileIterator implements DbFileIterator {
     }
     
     private Iterator<Tuple> getTuples() throws DbException, TransactionAbortedException, NoSuchElementException {
+        if (pgNo == numPages)
+            return null;
         HeapPage page = (HeapPage) Database.getBufferPool().getPage(tid, new HeapPageId(tableId, pgNo), perm);
         pgNo++;
         return page.iterator();
