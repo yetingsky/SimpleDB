@@ -18,19 +18,19 @@ import java.util.concurrent.ConcurrentHashMap;
 public class Catalog {
 
     private Map<String, Integer> name2id;
-    private Map<Integer, Item> id2items;
+    private Map<Integer, Table> id2items;
 
-    public static class Item {
+    public static class Table {
         public String name;
         public String pkeyField;
         public DbFile file;
-        public TupleDesc schema;
+        public TupleDesc td;
 
-        public Item(String name, String pkeyField, DbFile file, TupleDesc schema) {
+        public Table(String name, String pkeyField, DbFile file, TupleDesc td) {
             this.name = name;
             this.pkeyField = pkeyField;
             this.file = file;
-            this.schema = schema;
+            this.td = td;
         }
     }
 
@@ -61,7 +61,7 @@ public class Catalog {
         // some code goes here
         int id = file.getId();
         name2id.put(name, id);
-        id2items.put(id, new Item(name, pkeyField, file, file.getTupleDesc()));
+        id2items.put(id, new Table(name, pkeyField, file, file.getTupleDesc()));
     }
 
     public void addTable(DbFile file, String name) {
@@ -106,7 +106,7 @@ public class Catalog {
      */
     public TupleDesc getTupleDesc(int tableid) throws NoSuchElementException {
         // some code goes here
-        return getItem(tableid).schema;
+        return getTable(tableid).td;
     }
 
     /**
@@ -119,13 +119,13 @@ public class Catalog {
      */
     public DbFile getDatabaseFile(int tableid) throws NoSuchElementException {
         // some code goes here
-        return getItem(tableid).file;
+        return getTable(tableid).file;
     }
 
     public String getPrimaryKey(int tableid) {
         // some code goes here
         try {
-            return getItem(tableid).pkeyField;
+            return getTable(tableid).pkeyField;
         } catch (NoSuchElementException e) {
             return null;
         }
@@ -139,13 +139,13 @@ public class Catalog {
     public String getTableName(int tableid) {
         // some code goes here
         try {
-            return getItem(tableid).pkeyField;
+            return getTable(tableid).pkeyField;
         } catch (NoSuchElementException e) {
             return null;
         }
     }
 
-    private Item getItem(int id) throws NoSuchElementException {
+    private Table getTable(int id) throws NoSuchElementException {
         if (!id2items.containsKey(id)) {
             throw new NoSuchElementException();
         }
