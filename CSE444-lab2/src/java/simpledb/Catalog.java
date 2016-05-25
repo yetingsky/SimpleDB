@@ -155,6 +155,8 @@ public class Catalog {
     /** Delete all tables from the catalog */
     public void clear() {
         // some code goes here
+        name2id = new ConcurrentHashMap<>();
+        id2items = new ConcurrentHashMap<>();
     }
 
     /**
