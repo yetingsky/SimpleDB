@@ -50,8 +50,8 @@ public class Aggregate extends Operator {
     
     private void initialTupleDesc() {
         TupleDesc child_td = child.getTupleDesc();
-        if (gfield != 1) {
-            td = new TupleDesc(new Type[] {child_td.getFieldType(gfield), 
+        if (gfield != -1) {
+            td = new TupleDesc(new Type[] {child_td.getFieldType(gfield),
                                            child_td.getFieldType(afield)},
                                new String[] {child_td.getFieldName(gfield),
                                              child_td.getFieldName(afield)});
