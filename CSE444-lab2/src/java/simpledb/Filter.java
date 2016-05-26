@@ -88,6 +88,7 @@ public class Filter extends Operator {
         // some code goes here
         if (this.child!=children[0]) {
             this.child = children[0];
+            this.td = child.getTupleDesc();
         }
     }
     

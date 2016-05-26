@@ -11,8 +11,6 @@ public class Join extends Operator {
     private JoinPredicate p;
     private DbIterator child1;
     private DbIterator child2;
-    private TupleDesc td1;
-    private TupleDesc td2;
     private TupleDesc td;
     private Tuple t1;
 
@@ -32,9 +30,7 @@ public class Join extends Operator {
         this.p = p;
         this.child1 = child1;
         this.child2 = child2;
-        td1 = child1.getTupleDesc();
-        td2 = child2.getTupleDesc();
-        td = TupleDesc.merge(td1, td2);
+        td = TupleDesc.merge(child1.getTupleDesc(), child2.getTupleDesc());
         t1 = null;
     }
 
@@ -50,7 +46,7 @@ public class Join extends Operator {
      * */
     public String getJoinField1Name() {
         // some code goes here
-        return td1.getFieldName(p.getField1());
+        return child1.getTupleDesc().getFieldName(p.getField1());
     }
 
     /**
@@ -60,7 +56,7 @@ public class Join extends Operator {
      * */
     public String getJoinField2Name() {
         // some code goes here
-        return td2.getFieldName(p.getField2());
+        return child2.getTupleDesc().getFieldName(p.getField2());
     }
 
     /**
@@ -127,11 +123,11 @@ public class Join extends Operator {
             if (p.filter(t1, t2)) {
                 Tuple newTuple = new Tuple(td);
                 newTuple.setRecordId(t1.getRecordId());
-                for (int i = 0; i < td1.numFields(); i++) {
+                for (int i = 0; i < child1.getTupleDesc().numFields(); i++) {
                     newTuple.setField(i, t1.getField(i));
                 }
-                for (int i = 0; i < td2.numFields(); i++) {
-                    newTuple.setField(td1.numFields()+i, t2.getField(i));
+                for (int i = 0; i < child2.getTupleDesc().numFields(); i++) {
+                    newTuple.setField(child1.getTupleDesc().numFields()+i, t2.getField(i));
                 }
                 return newTuple;
             }
@@ -167,6 +163,7 @@ public class Join extends Operator {
         if (child2 != children[1]) {
             child2 = children[1];
         }
+        td = TupleDesc.merge(child1.getTupleDesc(), child2.getTupleDesc());
     }
 
 }
