@@ -110,11 +110,11 @@ public class Join extends Operator {
     protected Tuple fetchNext() throws TransactionAbortedException, DbException {
         // some code goes here
         if (t1 == null) {
-            t1 = getChild1Next();
-            if (t1 == null) {
-                return null;
-            } else {
+            if (child1.hasNext()) {
+                t1 = child1.next();
                 child2.rewind();
+            } else {
+                return null;
             }
         }
 
@@ -136,17 +136,6 @@ public class Join extends Operator {
         t1 = null;
         return fetchNext();
     }
-    
-    private Tuple getChild1Next() throws TransactionAbortedException, DbException {
-        assert t1 == null;
-        while (child1.hasNext()) {
-            t1 = child1.next();
-            if (t1 != null) {
-                return t1;
-            }
-        }
-        return null;
-    }
 
     @Override
     public DbIterator[] getChildren() {
@@ -163,7 +152,7 @@ public class Join extends Operator {
         if (child2 != children[1]) {
             child2 = children[1];
         }
-        td = TupleDesc.merge(child1.getTupleDesc(), child2.getTupleDesc());
+//        td = TupleDesc.merge(child1.getTupleDesc(), child2.getTupleDesc());
     }
 
 }

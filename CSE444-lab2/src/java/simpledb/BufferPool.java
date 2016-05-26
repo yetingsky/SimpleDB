@@ -84,9 +84,7 @@ public class BufferPool {
             pages_cache.put(pid, page);
             return page;
         } catch (NoSuchElementException e) {
-            throw new DbException("no page in database");
-        } catch (IllegalArgumentException e) {  
-            throw new DbException("no page in database");
+            throw new DbException("page id is wrong, no page in corresponding file");
         }
     }
 
@@ -155,10 +153,12 @@ public class BufferPool {
         DbFile file = Database.getCatalog().getDatabaseFile(tableId);
         ArrayList<Page> result = file.insertTuple(tid, t);
         for (Page page: result) {
-            page.markDirty(true, tid);
-            if (pages_cache.containsKey(page.getId())) {
-                pages_cache.put(page.getId(), page);
-            }
+            page.markDirty(true, tid);  // this page now are dirty
+            // don't need below code since all page read must by buffer pool's getPage API
+            // all dirty page will be in buffer or flush to disk (if unfortunately evict)
+//            if (pages_cache.containsKey(page.getId())) {
+//                pages_cache.put(page.getId(), page);
+//            }
         }
     }
 
@@ -182,9 +182,9 @@ public class BufferPool {
         ArrayList<Page> result = file.deleteTuple(tid, t);
         for (Page page: result) {
             page.markDirty(true, tid);
-            if (pages_cache.containsKey(page.getId())) {
-                pages_cache.put(page.getId(), page);
-            }
+//            if (pages_cache.containsKey(page.getId())) {
+//                pages_cache.put(page.getId(), page);
+//            }
         }
     }
 

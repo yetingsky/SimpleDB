@@ -13,7 +13,6 @@ public class Aggregate extends Operator {
     private int afield;
     private int gfield;
     private Aggregator.Op aop;
-    
     private DbIterator child;
     private TupleDesc td;
     private Aggregator ag;
@@ -42,7 +41,6 @@ public class Aggregate extends Operator {
         this.afield = afield;
         this.gfield = gfield;
         this.aop = aop;
-        
         this.child = child;
         initialTupleDesc();
         initialAggregator();
@@ -60,7 +58,6 @@ public class Aggregate extends Operator {
                                new String[] {child_td.getFieldName(afield)});
         }
     }
-    
     
     private void initialAggregator() {
         TupleDesc child_td = child.getTupleDesc();
@@ -134,7 +131,7 @@ public class Aggregate extends Operator {
 	// some code goes here
         super.open();
         if (it == null) {
-            child.open();
+            child.rewind();
             while (child.hasNext()) {
                 ag.mergeTupleIntoGroup(child.next());
             }
@@ -198,8 +195,9 @@ public class Aggregate extends Operator {
         if (this.child!=children[0])
         {
             this.child = children[0];
-            initialTupleDesc();
-            initialAggregator();
+//            it = null;
+//            initialTupleDesc();
+//            initialAggregator();
         }
     }
     

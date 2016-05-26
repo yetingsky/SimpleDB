@@ -10,7 +10,6 @@ public class Filter extends Operator {
     private static final long serialVersionUID = 1L;
     private Predicate p;
     private DbIterator child;
-    private TupleDesc td;
 
     /**
      * Constructor accepts a predicate to apply and a child operator to read
@@ -25,7 +24,6 @@ public class Filter extends Operator {
         // some code goes here
         this.p = p;
         this.child = child;
-        this.td = child.getTupleDesc();
     }
 
     public Predicate getPredicate() {
@@ -35,7 +33,7 @@ public class Filter extends Operator {
 
     public TupleDesc getTupleDesc() {
         // some code goes here
-        return td;
+        return child.getTupleDesc();
     }
 
     public void open() throws DbException, NoSuchElementException,
@@ -88,7 +86,6 @@ public class Filter extends Operator {
         // some code goes here
         if (this.child!=children[0]) {
             this.child = children[0];
-            this.td = child.getTupleDesc();
         }
     }
     

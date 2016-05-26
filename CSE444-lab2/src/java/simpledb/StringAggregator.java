@@ -17,7 +17,7 @@ public class StringAggregator implements Aggregator {
     private Type gbfieldtype;
     private int afield;
     private Op what;
-    private Item item;
+    private Item item;  // for non-grouping
     
     public static class Item {
         public int count;

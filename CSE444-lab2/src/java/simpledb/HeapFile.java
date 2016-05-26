@@ -17,7 +17,7 @@ public class HeapFile implements DbFile {
     
     private File f;
     private TupleDesc td;
-    private int tableid;
+    private int tableid;   // just avoid repeat computing getId
 
     /**
      * Constructs a heap file backed by the specified file.
@@ -30,6 +30,7 @@ public class HeapFile implements DbFile {
         // some code goes here
         this.f = f;
         this.td = td;
+        tableid = 0;
     }
 
     /**
@@ -80,9 +81,8 @@ public class HeapFile implements DbFile {
             rf.close();
             return new HeapPage((HeapPageId)pid, data);
         } catch (IOException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException("file not exist in file system or that page not in this file");
         }
-//        return null;
     }
 
     // see DbFile.java for javadocs
@@ -108,6 +108,7 @@ public class HeapFile implements DbFile {
             throws DbException, IOException, TransactionAbortedException {
         // some code goes here
         // not necessary for lab1
+        // don't know where here return a list of page but not a single page 
         ArrayList<Page> result = new ArrayList<>();
         BufferPool bfpool = Database.getBufferPool();
         int page_num = numPages();

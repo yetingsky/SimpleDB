@@ -252,8 +252,8 @@ public class HeapPage implements Page {
             throw new DbException("tuple slot is already empty");
         }
         markSlotUsed(rid.tupleno(), false);
-        tuples[rid.tupleno()] = null;  // help for garbage collection
-        t.setRecordId(null);  // this tuple doesn't belong to any page
+        tuples[rid.tupleno()] = null;
+        t.setRecordId(null);
     }
 
     /**

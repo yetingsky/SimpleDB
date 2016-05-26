@@ -12,7 +12,7 @@ public class IntegerAggregator implements Aggregator {
 
     private static final long serialVersionUID = 1L;
     private Map<Field, Item> map;
-    private Item item;
+    private Item item;  // for non-grouping
     private int gbfield; 
     private Type gbfieldtype;
     private int afield;
