@@ -1,0 +1,1 @@
+select d.f1, d.f2 from data d;
