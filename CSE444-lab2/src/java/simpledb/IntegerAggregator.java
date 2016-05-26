@@ -12,6 +12,7 @@ public class IntegerAggregator implements Aggregator {
 
     private static final long serialVersionUID = 1L;
     private Map<Field, Item> map;
+    private Item item;
     private int gbfield; 
     private Type gbfieldtype;
     private int afield;
@@ -22,6 +23,12 @@ public class IntegerAggregator implements Aggregator {
         public int count;
         public int min;
         public int max;
+        
+        public Item() {
+            sum = count = 0;
+            max = Integer.MIN_VALUE;
+            min = Integer.MAX_VALUE;
+        }
         
         public Item(int val) {
             count = 1;
@@ -58,9 +65,10 @@ public class IntegerAggregator implements Aggregator {
         // some code goes here
         this.gbfield = gbfield;
         this.gbfieldtype = gbfieldtype;
-        this.afield  =afield;
+        this.afield = afield;
         this.what = what;
         map = new ConcurrentHashMap<>();
+        item = new Item();
     }
 
     /**
@@ -72,12 +80,17 @@ public class IntegerAggregator implements Aggregator {
      */
     public void mergeTupleIntoGroup(Tuple tup) {
         // some code goes here
-        Field gbf = tup.getField(gbfield);
         IntField af = (IntField) tup.getField(afield);
-        if (map.containsKey(gbf)) {
-            map.get(gbf).mergeValue(af.getValue());
+        int val = af.getValue();
+        if (gbfield != NO_GROUPING) {
+            Field gbf = tup.getField(gbfield);
+            if (map.containsKey(gbf)) {
+                map.get(gbf).mergeValue(val);
+            } else {
+                map.put(gbf, new Item(val));
+            }
         } else {
-            map.put(gbf, new Item(af.getValue()));
+            item.mergeValue(val);
         }
     }
 
@@ -91,24 +104,37 @@ public class IntegerAggregator implements Aggregator {
      */
     public DbIterator iterator() {
         // some code goes here
-        TupleDesc td = new TupleDesc(new Type[] {gbfieldtype, Type.INT_TYPE});
+        TupleDesc td;
         ArrayList<Tuple> tuples = new ArrayList<>();
-        for (Entry<Field, Item> e: map.entrySet()) {
+        if (gbfield != NO_GROUPING) {
+            td = new TupleDesc(new Type[] {gbfieldtype, Type.INT_TYPE});
+            for (Entry<Field, Item> e: map.entrySet()) {
+                Tuple t = new Tuple(td);
+                setTupleField(1, what, t, e.getValue());
+                t.setField(0, e.getKey());
+                tuples.add(t);
+            }
+        } else {
+            td = new TupleDesc(new Type[] {Type.INT_TYPE});
             Tuple t = new Tuple(td);
-            t.setField(0, e.getKey());
-            if (what == Aggregator.Op.SUM)
-                t.setField(1, new IntField(e.getValue().sum));
-            else if (what == Aggregator.Op.COUNT)
-                t.setField(1, new IntField(e.getValue().count));
-            else if (what == Aggregator.Op.MAX)
-                t.setField(1, new IntField(e.getValue().max));
-            else if (what == Aggregator.Op.MIN)
-                t.setField(1, new IntField(e.getValue().min));
-            else if (what == Aggregator.Op.AVG)
-                t.setField(1, new IntField(e.getValue().avg()));
+            setTupleField(0, what, t, item);
             tuples.add(t);
         }
+        
         return new TupleIterator(td, tuples);
+    }
+    
+    private void setTupleField(int fieldNum, Op what, Tuple t, Item item) {
+        if (what == Aggregator.Op.SUM)
+            t.setField(fieldNum, new IntField(item.sum));
+        else if (what == Aggregator.Op.COUNT)
+            t.setField(fieldNum, new IntField(item.count));
+        else if (what == Aggregator.Op.MAX)
+            t.setField(fieldNum, new IntField(item.max));
+        else if (what == Aggregator.Op.MIN)
+            t.setField(fieldNum, new IntField(item.min));
+        else if (what == Aggregator.Op.AVG)
+            t.setField(fieldNum, new IntField(item.avg()));
     }
 
 }

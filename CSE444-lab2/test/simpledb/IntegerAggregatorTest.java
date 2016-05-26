@@ -62,6 +62,61 @@ public class IntegerAggregatorTest extends SimpleDbTestBase {
       { 1, 4, 3, 2 }
     };
   }
+  
+  @Test public void sumNoGrouping() throws Exception {
+      scan1.open();
+      IntegerAggregator agg = new IntegerAggregator(-1, null, 1, Aggregator.Op.SUM);
+      while (scan1.hasNext()) {
+          agg.mergeTupleIntoGroup(scan1.next());
+      }
+      DbIterator it = agg.iterator();
+      it.open();
+      assertEquals(new IntField(31), it.next().getField(0));
+    }
+  
+  @Test public void countNoGrouping() throws Exception {
+      scan1.open();
+      IntegerAggregator agg = new IntegerAggregator(-1, null, 1, Aggregator.Op.COUNT);
+      while (scan1.hasNext()) {
+          agg.mergeTupleIntoGroup(scan1.next());
+      }
+      DbIterator it = agg.iterator();
+      it.open();
+      assertEquals(new IntField(7), it.next().getField(0));
+    }
+  
+  @Test public void avgNoGrouping() throws Exception {
+      scan1.open();
+      IntegerAggregator agg = new IntegerAggregator(-1, null, 1, Aggregator.Op.AVG);
+      while (scan1.hasNext()) {
+          agg.mergeTupleIntoGroup(scan1.next());
+      }
+      DbIterator it = agg.iterator();
+      it.open();
+      assertEquals(new IntField(4), it.next().getField(0));
+    }
+  
+  @Test public void minNoGrouping() throws Exception {
+      scan1.open();
+      IntegerAggregator agg = new IntegerAggregator(-1, null, 1, Aggregator.Op.MIN);
+      while (scan1.hasNext()) {
+          agg.mergeTupleIntoGroup(scan1.next());
+      }
+      DbIterator it = agg.iterator();
+      it.open();
+      assertEquals(new IntField(2), it.next().getField(0));
+    }
+  
+  @Test public void maxNoGrouping() throws Exception {
+      scan1.open();
+      IntegerAggregator agg = new IntegerAggregator(-1, null, 1, Aggregator.Op.MAX);
+      while (scan1.hasNext()) {
+          agg.mergeTupleIntoGroup(scan1.next());
+      }
+      DbIterator it = agg.iterator();
+      it.open();
+      assertEquals(new IntField(7), it.next().getField(0));
+    }
 
   /**
    * Test IntegerAggregator.mergeTupleIntoGroup() and iterator() over a sum

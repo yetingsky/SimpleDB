@@ -37,6 +37,17 @@ public class StringAggregatorTest extends SimpleDbTestBase {
     };
 
   }
+  
+  @Test public void countNoGrouping() throws Exception {
+      scan1.open();
+      StringAggregator agg = new StringAggregator(-1, null, 1, Aggregator.Op.COUNT);
+      while (scan1.hasNext()) {
+          agg.mergeTupleIntoGroup(scan1.next());
+      }
+      DbIterator it = agg.iterator();
+      it.open();
+      assertEquals(new IntField(7), it.next().getField(0));
+    }
 
   /**
    * Test String.mergeTupleIntoGroup() and iterator() over a COUNT

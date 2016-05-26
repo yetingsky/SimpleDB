@@ -17,9 +17,14 @@ public class StringAggregator implements Aggregator {
     private Type gbfieldtype;
     private int afield;
     private Op what;
+    private Item item;
     
     public static class Item {
         public int count;
+        
+        public Item() {
+            count = 0;
+        }
         
         public Item(String val) {
             count = 1;
@@ -46,6 +51,7 @@ public class StringAggregator implements Aggregator {
         this.afield  =afield;
         this.what = what;
         map = new ConcurrentHashMap<>();
+        item = new Item();
     }
 
     /**
@@ -54,12 +60,17 @@ public class StringAggregator implements Aggregator {
      */
     public void mergeTupleIntoGroup(Tuple tup) {
         // some code goes here
-        Field gbf = tup.getField(gbfield);
         StringField af = (StringField) tup.getField(afield);
-        if (map.containsKey(gbf)) {
-            map.get(gbf).mergeValue(af.getValue());
+        String val = af.getValue();
+        if (gbfield != NO_GROUPING) {
+            Field gbf = tup.getField(gbfield);
+            if (map.containsKey(gbf)) {
+                map.get(gbf).mergeValue(val);
+            } else {
+                map.put(gbf, new Item(val));
+            }
         } else {
-            map.put(gbf, new Item(af.getValue()));
+            item.mergeValue(val);
         }
     }
 
@@ -73,16 +84,29 @@ public class StringAggregator implements Aggregator {
      */
     public DbIterator iterator() {
         // some code goes here
-        TupleDesc td = new TupleDesc(new Type[] {gbfieldtype, Type.INT_TYPE});
+        TupleDesc td;
         ArrayList<Tuple> tuples = new ArrayList<>();
-        for (Entry<Field, Item> e: map.entrySet()) {
+        if (gbfield != NO_GROUPING) {
+            td = new TupleDesc(new Type[] {gbfieldtype, Type.INT_TYPE});
+            for (Entry<Field, Item> e: map.entrySet()) {
+                Tuple t = new Tuple(td);
+                setTupleField(1, what, t, e.getValue());
+                t.setField(0, e.getKey());
+                tuples.add(t);
+            }
+        } else {
+            td = new TupleDesc(new Type[] {Type.INT_TYPE});
             Tuple t = new Tuple(td);
-            t.setField(0, e.getKey());
-            if (what == Aggregator.Op.COUNT)
-                t.setField(1, new IntField(e.getValue().count));
+            setTupleField(0, what, t, item);
             tuples.add(t);
         }
+        
         return new TupleIterator(td, tuples);
+    }
+    
+    private void setTupleField(int fieldNum, Op what, Tuple t, Item item) {
+        if (what == Aggregator.Op.COUNT)
+            t.setField(fieldNum, new IntField(item.count));
     }
 
 }
