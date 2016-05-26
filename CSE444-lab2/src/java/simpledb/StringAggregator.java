@@ -1,11 +1,34 @@
 package simpledb;
 
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
+
+
 /**
  * Knows how to compute some aggregate over a set of StringFields.
  */
 public class StringAggregator implements Aggregator {
 
     private static final long serialVersionUID = 1L;
+    private Map<Field, Item> map;
+    private int gbfield; 
+    private Type gbfieldtype;
+    private int afield;
+    private Op what;
+    
+    public static class Item {
+        public int count;
+        
+        public Item(String val) {
+            count = 1;
+        }
+        
+        public void mergeValue(String val) {
+            count += 1;
+        }
+    }
 
     /**
      * Aggregate constructor
@@ -18,6 +41,11 @@ public class StringAggregator implements Aggregator {
 
     public StringAggregator(int gbfield, Type gbfieldtype, int afield, Op what) {
         // some code goes here
+        this.gbfield = gbfield;
+        this.gbfieldtype = gbfieldtype;
+        this.afield  =afield;
+        this.what = what;
+        map = new ConcurrentHashMap<>();
     }
 
     /**
@@ -26,6 +54,13 @@ public class StringAggregator implements Aggregator {
      */
     public void mergeTupleIntoGroup(Tuple tup) {
         // some code goes here
+        Field gbf = tup.getField(gbfield);
+        StringField af = (StringField) tup.getField(afield);
+        if (map.containsKey(gbf)) {
+            map.get(gbf).mergeValue(af.getValue());
+        } else {
+            map.put(gbf, new Item(af.getValue()));
+        }
     }
 
     /**
@@ -38,7 +73,16 @@ public class StringAggregator implements Aggregator {
      */
     public DbIterator iterator() {
         // some code goes here
-        throw new UnsupportedOperationException("please implement me for lab2");
+        TupleDesc td = new TupleDesc(new Type[] {gbfieldtype, Type.INT_TYPE});
+        ArrayList<Tuple> tuples = new ArrayList<>();
+        for (Entry<Field, Item> e: map.entrySet()) {
+            Tuple t = new Tuple(td);
+            t.setField(0, e.getKey());
+            if (what == Aggregator.Op.COUNT)
+                t.setField(1, new IntField(e.getValue().count));
+            tuples.add(t);
+        }
+        return new TupleIterator(td, tuples);
     }
 
 }
