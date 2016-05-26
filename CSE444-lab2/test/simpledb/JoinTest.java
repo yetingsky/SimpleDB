@@ -82,6 +82,22 @@ public class JoinTest extends SimpleDbTestBase {
     Tuple actual = op.next();
     assertTrue(TestUtil.compareTuples(expected, actual));
   }
+  
+  
+  /**
+   * Unit test for Join.getNext() using a &gt; predicate
+   */
+  @Test public void nextCount() throws Exception {
+      JoinPredicate pred = new JoinPredicate(0, Predicate.Op.GREATER_THAN, 0);
+      Join op = new Join(pred, scan1, scan2);
+      op.open();
+      int count = 0;
+      while (op.hasNext()) {
+          op.next();
+          count += 1;
+      }
+      assertEquals(11, count);
+    }
 
   /**
    * Unit test for Join.getNext() using a &gt; predicate
