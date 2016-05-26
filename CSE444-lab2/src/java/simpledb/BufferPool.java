@@ -4,6 +4,7 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -29,7 +30,6 @@ public class BufferPool {
     public static final int DEFAULT_PAGES = 50;
     
     private Map<PageId, Page> pages_cache;
-    private int size;
     private int numPages;
 
     /**
@@ -40,7 +40,6 @@ public class BufferPool {
     public BufferPool(int numPages) {
         // some code goes here
         pages_cache = new ConcurrentHashMap<>();
-        size = 0;
         this.numPages = numPages;
     }
     
@@ -75,22 +74,19 @@ public class BufferPool {
             return pages_cache.get(pid);
         }
         
-        if (size >= numPages) {
-            // just throw exception
-            // need eviction policy later
-            throw new DbException("more than numPages requests are made for different pages");
-        } else {
-            try {
-                DbFile file = Database.getCatalog().getDatabaseFile(pid.getTableId());
-                Page page = file.readPage(pid);
-                pages_cache.put(pid, page);
-                size++;
-                return page;
-            } catch (NoSuchElementException e) {
-                throw new DbException("no page in database");
-            } catch (IllegalArgumentException e) {  
-                throw new DbException("no page in database");
-            }
+        while (pages_cache.size() >= numPages) {
+            evictPage();
+        }
+        
+        try {
+            DbFile file = Database.getCatalog().getDatabaseFile(pid.getTableId());
+            Page page = file.readPage(pid);
+            pages_cache.put(pid, page);
+            return page;
+        } catch (NoSuchElementException e) {
+            throw new DbException("no page in database");
+        } catch (IllegalArgumentException e) {  
+            throw new DbException("no page in database");
         }
     }
 
@@ -200,7 +196,9 @@ public class BufferPool {
     public synchronized void flushAllPages() throws IOException {
         // some code goes here
         // not necessary for lab1
-
+        for (PageId pid: pages_cache.keySet()) {
+            flushPage(pid);
+        }
     }
 
     /** Remove the specific page id from the buffer pool.
@@ -220,6 +218,12 @@ public class BufferPool {
     private synchronized  void flushPage(PageId pid) throws IOException {
         // some code goes here
         // not necessary for lab1
+        Page page = pages_cache.get(pid);
+        if (page == null || page.isDirty() != null)
+            return;
+        
+        DbFile file = Database.getCatalog().getDatabaseFile(pid.getTableId());
+        file.writePage(page);
     }
 
     /** Write all pages of the specified transaction to disk.
@@ -236,6 +240,25 @@ public class BufferPool {
     private synchronized  void evictPage() throws DbException {
         // some code goes here
         // not necessary for lab1
+        // random choice a page, flush it and evict it from cache
+        Random random = new Random();
+        int r = random.nextInt(pages_cache.size());
+        PageId victim = null;
+        int i = 0;
+        for (PageId pid: pages_cache.keySet()) {
+            if (r == i) {
+                victim = pid;
+                break;
+            }
+            i++;
+        }
+        
+        try {
+            flushPage(victim);
+        } catch (IOException e) {
+            throw new DbException("can not flush page");
+        }
+        pages_cache.remove(victim);
     }
 
 }
