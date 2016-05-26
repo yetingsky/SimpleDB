@@ -1,6 +1,7 @@
 package simpledb;
 
 import java.io.*;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -27,7 +28,7 @@ public class BufferPool {
     constructor instead. */
     public static final int DEFAULT_PAGES = 50;
     
-    private Map<PageId, Page> pages;
+    private Map<PageId, Page> pages_cache;
     private int size;
     private int numPages;
 
@@ -38,7 +39,7 @@ public class BufferPool {
      */
     public BufferPool(int numPages) {
         // some code goes here
-        pages = new ConcurrentHashMap<>();
+        pages_cache = new ConcurrentHashMap<>();
         size = 0;
         this.numPages = numPages;
     }
@@ -70,8 +71,8 @@ public class BufferPool {
     public Page getPage(TransactionId tid, PageId pid, Permissions perm)
         throws TransactionAbortedException, DbException {
         // some code goes here
-        if (pages.containsKey(pid)) {
-            return pages.get(pid);
+        if (pages_cache.containsKey(pid)) {
+            return pages_cache.get(pid);
         }
         
         if (size >= numPages) {
@@ -82,7 +83,7 @@ public class BufferPool {
             try {
                 DbFile file = Database.getCatalog().getDatabaseFile(pid.getTableId());
                 Page page = file.readPage(pid);
-                pages.put(pid, page);
+                pages_cache.put(pid, page);
                 size++;
                 return page;
             } catch (NoSuchElementException e) {
@@ -155,6 +156,14 @@ public class BufferPool {
         throws DbException, IOException, TransactionAbortedException {
         // some code goes here
         // not necessary for lab1
+        DbFile file = Database.getCatalog().getDatabaseFile(tableId);
+        ArrayList<Page> result = file.insertTuple(tid, t);
+        for (Page page: result) {
+            page.markDirty(true, tid);
+            if (pages_cache.containsKey(page.getId())) {
+                pages_cache.put(page.getId(), page);
+            }
+        }
     }
 
     /**
@@ -173,6 +182,14 @@ public class BufferPool {
         throws DbException, IOException, TransactionAbortedException {
         // some code goes here
         // not necessary for lab1
+        DbFile file = Database.getCatalog().getDatabaseFile(t.getRecordId().getPageId().getTableId());
+        ArrayList<Page> result = file.deleteTuple(tid, t);
+        for (Page page: result) {
+            page.markDirty(true, tid);
+            if (pages_cache.containsKey(page.getId())) {
+                pages_cache.put(page.getId(), page);
+            }
+        }
     }
 
     /**
