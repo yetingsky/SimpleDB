@@ -1,11 +1,44 @@
 package simpledb;
 
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
+
 /**
  * Knows how to compute some aggregate over a set of IntFields.
  */
 public class IntegerAggregator implements Aggregator {
 
     private static final long serialVersionUID = 1L;
+    private Map<Field, Item> map;
+    private int gbfield; 
+    private Type gbfieldtype;
+    private int afield;
+    private Op what;
+    
+    public static class Item {
+        public int sum;
+        public int count;
+        public int min;
+        public int max;
+        
+        public Item(int val) {
+            count = 1;
+            min = max = sum = val;
+        }
+        
+        public void mergeValue(int val) {
+            sum += val;
+            count += 1;
+            min = Math.min(min, val);
+            max = Math.max(max, val);
+        }
+        
+        public int avg() {
+            return sum / count;
+        }
+    }
 
     /**
      * Aggregate constructor
@@ -21,9 +54,13 @@ public class IntegerAggregator implements Aggregator {
      * @param what
      *            the aggregation operator
      */
-
     public IntegerAggregator(int gbfield, Type gbfieldtype, int afield, Op what) {
         // some code goes here
+        this.gbfield = gbfield;
+        this.gbfieldtype = gbfieldtype;
+        this.afield  =afield;
+        this.what = what;
+        map = new ConcurrentHashMap<>();
     }
 
     /**
@@ -35,6 +72,13 @@ public class IntegerAggregator implements Aggregator {
      */
     public void mergeTupleIntoGroup(Tuple tup) {
         // some code goes here
+        Field gbf = tup.getField(gbfield);
+        IntField af = (IntField) tup.getField(afield);
+        if (map.containsKey(gbf)) {
+            map.get(gbf).mergeValue(af.getValue());
+        } else {
+            map.put(gbf, new Item(af.getValue()));
+        }
     }
 
     /**
@@ -47,8 +91,24 @@ public class IntegerAggregator implements Aggregator {
      */
     public DbIterator iterator() {
         // some code goes here
-        throw new
-        UnsupportedOperationException("please implement me for lab2");
+        TupleDesc td = new TupleDesc(new Type[] {gbfieldtype, Type.INT_TYPE});
+        ArrayList<Tuple> tuples = new ArrayList<>();
+        for (Entry<Field, Item> e: map.entrySet()) {
+            Tuple t = new Tuple(td);
+            t.setField(0, e.getKey());
+            if (what == Aggregator.Op.SUM)
+                t.setField(1, new IntField(e.getValue().sum));
+            else if (what == Aggregator.Op.COUNT)
+                t.setField(1, new IntField(e.getValue().count));
+            else if (what == Aggregator.Op.MAX)
+                t.setField(1, new IntField(e.getValue().max));
+            else if (what == Aggregator.Op.MIN)
+                t.setField(1, new IntField(e.getValue().min));
+            else if (what == Aggregator.Op.AVG)
+                t.setField(1, new IntField(e.getValue().avg()));
+            tuples.add(t);
+        }
+        return new TupleIterator(td, tuples);
     }
 
 }
