@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -111,6 +112,13 @@ public class BufferPool {
         // not necessary for lab1|lab2
         lockManager.releaseLock(tid, pid);
     }
+    
+    /** Return true if the specified transaction has a lock on the specified page */
+    public boolean holdsLock(TransactionId tid, PageId pid) {
+        // some code goes here
+        // not necessary for lab1|lab2
+        return lockManager.holdsLock(tid, pid);
+    }
 
     /**
      * Release all locks associated with a given transaction.
@@ -120,14 +128,7 @@ public class BufferPool {
     public void transactionComplete(TransactionId tid) throws IOException {
         // some code goes here
         // not necessary for lab1|lab2
-        
-    }
-
-    /** Return true if the specified transaction has a lock on the specified page */
-    public boolean holdsLock(TransactionId tid, PageId pid) {
-        // some code goes here
-        // not necessary for lab1|lab2
-        return lockManager.holdsLock(tid, pid);
+        transactionComplete(tid, true);
     }
 
     /**
@@ -141,6 +142,19 @@ public class BufferPool {
         throws IOException {
         // some code goes here
         // not necessary for lab1|lab2
+        for (PageId pid: pages_cache.keySet()) {
+            Page p = pages_cache.get(pid);
+            if (p.isDirty() == tid) {
+                if (commit) {
+                    flushPage(pid);
+                } else {
+                    DbFile file = Database.getCatalog().getDatabaseFile(pid.getTableId());
+                    Page page = file.readPage(pid);
+                    pages_cache.put(pid, page);
+                }
+            }
+            lockManager.releaseLock(tid, pid);
+        }
     }
 
     /**
@@ -230,11 +244,12 @@ public class BufferPool {
         // some code goes here
         // not necessary for lab1
         Page page = pages_cache.get(pid);
-        if (page == null || page.isDirty() != null)
+        if (page == null || page.isDirty() == null)
             return;
         
         DbFile file = Database.getCatalog().getDatabaseFile(pid.getTableId());
         file.writePage(page);
+        page.markDirty(false, null);
     }
 
     /** Write all pages of the specified transaction to disk.
@@ -242,6 +257,12 @@ public class BufferPool {
     public synchronized  void flushPages(TransactionId tid) throws IOException {
         // some code goes here
         // not necessary for lab1|lab2
+        for (PageId pid: pages_cache.keySet()) {
+            Page p = pages_cache.get(pid);
+            if (p.isDirty() == tid) {
+                flushPage(pid);
+            }
+        }
     }
 
     /**
@@ -282,7 +303,7 @@ public class BufferPool {
         List<PageId> pages = new ArrayList<>(pages_cache.keySet());
         Collections.shuffle(pages);
         for (PageId pid: pages) {
-            if (pages.contains(pid) && pages_cache.get(pid).isDirty() == null) {
+            if (pages_cache.containsKey(pid) && pages_cache.get(pid).isDirty() == null) {
                 return pid;
             }
         }
