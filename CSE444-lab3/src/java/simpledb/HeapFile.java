@@ -108,23 +108,31 @@ public class HeapFile implements DbFile {
             throws DbException, IOException, TransactionAbortedException {
         // some code goes here
         // not necessary for lab1
-        // don't know where here return a list of page but not a single page 
-        ArrayList<Page> result = new ArrayList<>();
+        // don't know where here return a list of page but not a single page
         BufferPool bfpool = Database.getBufferPool();
         int page_num = numPages();
         for (int i = 0; i < page_num; i++) {
             // must read page from buffer pool
-            HeapPage page = (HeapPage) bfpool.getPage(tid, new HeapPageId(getId(), i), null);
+            // since must page just need too see if it's has empty slot, so use shared lock for performance
+            // and insert tuple will upgrade shared lock to exclusive lock
+            HeapPage page = (HeapPage) bfpool.getPage(tid, new HeapPageId(getId(), i), Permissions.READ_ONLY);
             if (page.getNumEmptySlots() > 0) {
-                page.insertTuple(t);
-                result.add(page);
-                return result;
+                return actuallyInsertTuple(tid, i, t);
+            } else {
+                // immediately release lock on this page since not use any data from this page
+                // just for performance
+                bfpool.releasePage(tid, page.getId());
             }
         }
         // all page in this file is full, need create a new empty page
         writePage(new HeapPage(new HeapPageId(getId(), page_num), HeapPage.createEmptyPageData()));
-        // again, read this page by buffer pool
-        HeapPage page = (HeapPage) bfpool.getPage(tid, new HeapPageId(getId(), page_num), null);
+        return actuallyInsertTuple(tid, page_num, t);
+    }
+    
+    private ArrayList<Page> actuallyInsertTuple(TransactionId tid, int num, Tuple t) 
+            throws DbException, IOException, TransactionAbortedException {
+        ArrayList<Page> result = new ArrayList<>();
+        HeapPage page = (HeapPage) Database.getBufferPool().getPage(tid, new HeapPageId(getId(), num), Permissions.READ_WRITE);
         page.insertTuple(t);
         result.add(page);
         return result;
@@ -137,7 +145,8 @@ public class HeapFile implements DbFile {
         // not necessary for lab1
         ArrayList<Page> result = new ArrayList<>();
         // must read page from buffer pool
-        HeapPage page = (HeapPage) Database.getBufferPool().getPage(tid, t.getRecordId().getPageId(), null);
+        HeapPage page = (HeapPage) Database.getBufferPool().getPage(tid, t.getRecordId().getPageId(), 
+                                                                    Permissions.READ_WRITE);
         page.deleteTuple(t);
         result.add(page);
         return result;
@@ -146,7 +155,7 @@ public class HeapFile implements DbFile {
     // see DbFile.java for javadocs
     public DbFileIterator iterator(TransactionId tid) {
         // some code goes here
-        return new HeapFileIterator(getId(), numPages(), tid);
+        return new HeapFileIterator(getId(), numPages(), tid, Permissions.READ_ONLY);
     }
 
 }

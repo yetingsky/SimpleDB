@@ -12,13 +12,13 @@ public class HeapFileIterator implements DbFileIterator {
     private Permissions perm;
     private Iterator<Tuple> tuples;
     
-    public HeapFileIterator(int tableId, int numPages, TransactionId tid) {
+    public HeapFileIterator(int tableId, int numPages, TransactionId tid, Permissions perm) {
         this.tableId = tableId;
         this.numPages = numPages;
         this.tid = tid;
         this.pgNo = -1;
         this.tuples = null;
-        this.perm = null;
+        this.perm = perm;
     }
 
     @Override

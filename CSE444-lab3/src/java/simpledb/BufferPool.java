@@ -31,7 +31,8 @@ public class BufferPool {
     
     private Map<PageId, Page> pages_cache;
     private int numPages;
-
+    private LockManager lockManager;
+    
     /**
      * Creates a BufferPool that caches up to numPages pages.
      *
@@ -41,6 +42,7 @@ public class BufferPool {
         // some code goes here
         pages_cache = new ConcurrentHashMap<>();
         this.numPages = numPages;
+        lockManager = new LockManager();
     }
     
     public static int getPageSize() {
@@ -70,6 +72,9 @@ public class BufferPool {
     public Page getPage(TransactionId tid, PageId pid, Permissions perm)
         throws TransactionAbortedException, DbException {
         // some code goes here
+
+        lockManager.accquireLock(tid, pid, perm);
+        
         if (pages_cache.containsKey(pid)) {
             return pages_cache.get(pid);
         }
@@ -100,6 +105,7 @@ public class BufferPool {
     public  void releasePage(TransactionId tid, PageId pid) {
         // some code goes here
         // not necessary for lab1|lab2
+        lockManager.releaseLock(tid, pid);
     }
 
     /**
@@ -110,13 +116,14 @@ public class BufferPool {
     public void transactionComplete(TransactionId tid) throws IOException {
         // some code goes here
         // not necessary for lab1|lab2
+        
     }
 
     /** Return true if the specified transaction has a lock on the specified page */
-    public boolean holdsLock(TransactionId tid, PageId p) {
+    public boolean holdsLock(TransactionId tid, PageId pid) {
         // some code goes here
         // not necessary for lab1|lab2
-        return false;
+        return lockManager.holdsLock(tid, pid);
     }
 
     /**
@@ -174,7 +181,7 @@ public class BufferPool {
      * @param tid the transaction deleting the tuple.
      * @param t the tuple to delete
      */
-    public  void deleteTuple(TransactionId tid, Tuple t)
+    public void deleteTuple(TransactionId tid, Tuple t)
         throws DbException, IOException, TransactionAbortedException {
         // some code goes here
         // not necessary for lab1

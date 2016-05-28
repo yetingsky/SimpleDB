@@ -30,15 +30,15 @@ public class LockManager {
         }
     }
 
-    public void getLock(TransactionId tid, PageId pid, Permissions perm) {        
+    public void accquireLock(TransactionId tid, PageId pid, Permissions perm) {        
         if (perm ==Permissions.READ_WRITE) {
-            getExclusiveLock(tid, pid);
+            accquireExclusiveLock(tid, pid);
         } else {
-            getSharedLock(tid, pid);
+            accquireSharedLock(tid, pid);
         }
     }
     
-    private void getExclusiveLock(TransactionId tid, PageId pid) {
+    private void accquireExclusiveLock(TransactionId tid, PageId pid) {
         while (!(locks.containsKey(pid) && 
                 locks.get(pid).lockType == EXCLUSIVE_LOCK &&
                 locks.get(pid).getTransactions().size() == 1 &&
@@ -54,7 +54,7 @@ public class LockManager {
         }
     }
     
-    private void getSharedLock(TransactionId tid, PageId pid) {
+    private void accquireSharedLock(TransactionId tid, PageId pid) {
         while (!(locks.containsKey(pid) &&
                 locks.get(pid).getTransactions().contains(tid))) {
            synchronized (pid) {
@@ -83,6 +83,6 @@ public class LockManager {
     }
     
     public synchronized boolean holdsLock(TransactionId tid, PageId pid) {
-        return locks.containsKey(pid);
+        return locks.containsKey(pid) && locks.get(pid).getTransactions().contains(tid);
     }
 }
