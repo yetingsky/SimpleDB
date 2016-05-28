@@ -2,7 +2,11 @@ package simpledb;
 
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Map;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
@@ -248,6 +252,18 @@ public class BufferPool {
         // some code goes here
         // not necessary for lab1
         // random choice a page, flush it and evict it from cache
+//        PageId victim = randomEvictPolicy();
+        PageId victim = randomEvictPolicyNonDirty();
+        
+        try {
+            flushPage(victim);
+        } catch (IOException e) {
+            throw new DbException("can not flush page");
+        }
+        pages_cache.remove(victim);
+    }
+    
+    private PageId randomEvictPolicy() throws DbException {
         Random random = new Random();
         int r = random.nextInt(pages_cache.size());
         PageId victim = null;
@@ -259,13 +275,18 @@ public class BufferPool {
             }
             i++;
         }
-        
-        try {
-            flushPage(victim);
-        } catch (IOException e) {
-            throw new DbException("can not flush page");
+        return victim;
+    }
+    
+    private PageId randomEvictPolicyNonDirty() throws DbException {
+        List<PageId> pages = new ArrayList<>(pages_cache.keySet());
+        Collections.shuffle(pages);
+        for (PageId pid: pages) {
+            if (pages.contains(pid) && pages_cache.get(pid).isDirty() == null) {
+                return pid;
+            }
         }
-        pages_cache.remove(victim);
+        throw new DbException("all page in buffer are dirty");
     }
 
 }
