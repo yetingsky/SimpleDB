@@ -240,6 +240,9 @@ public class BufferPool {
     public synchronized void discardPage(PageId pid) {
         // some code goes here
         // only necessary for lab5
+        if (pages_cache.containsKey(pid)) {
+            pages_cache.remove(pid);
+        }
     }
     
     private void addDirtyPageTid(TransactionId tid, PageId pid) {

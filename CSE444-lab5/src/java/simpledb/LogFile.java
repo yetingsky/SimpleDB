@@ -467,9 +467,44 @@ public class LogFile {
             synchronized(this) {
                 preAppend();
                 // some code goes here
+                rollback(tid.getId(), currentOffset);
             }
         }
     }
+    
+    private void rollback(Long tidid, Long recordStart)
+            throws NoSuchElementException, IOException {
+            synchronized (Database.getBufferPool()) {
+                synchronized(this) {
+                    preAppend();
+                    // some code goes here
+                    // file pointer will remain recordStart position after rollback
+                    if (!tidToFirstLogRecord.containsKey(tidid)) {
+                        return;
+                    }
+                    long recordStartCopy = recordStart;
+                    long startOffset = tidToFirstLogRecord.get(tidid);  
+                    while (recordStart > startOffset) {
+                        // find a record start offset and seek here
+                        raf.seek(recordStart-LONG_SIZE);
+                        recordStart = raf.readLong();
+                        raf.seek(recordStart);
+                        if (raf.readInt() == UPDATE_RECORD) {
+                            raf.seek(recordStart + INT_SIZE);
+                            if (raf.readLong() == tidid) {
+                                raf.seek(recordStart + INT_SIZE + LONG_SIZE);
+                                Page p = readPageData(raf);
+                                PageId pid = p.getId();
+                                Database.getBufferPool().discardPage(pid);
+                                DbFile file = Database.getCatalog().getDatabaseFile(pid.getTableId());
+                                file.writePage(p);
+                            }
+                        }
+                    }
+                    raf.seek(recordStartCopy);
+                }
+            }
+        }
 
     /** Shutdown the logging system, writing out whatever state
         is necessary so that start up can happen quickly (without
@@ -494,6 +529,57 @@ public class LogFile {
             synchronized (this) {
                 recoveryUndecided = false;
                 // some code goes here
+                raf.seek(0);
+                // seek to first checkpoint if has checkpoint
+                long checkPoint = raf.readLong();
+                if (checkPoint != -1) {
+                    raf.seek(checkPoint);
+                    raf.readInt(); raf.readLong();
+                    int length = raf.readInt();
+                    for (int i = 0; i < length; i++) {
+                        long tidid = raf.readLong();
+                        long offset = raf.readLong();
+                        tidToFirstLogRecord.put(tidid, offset);
+                    }
+                    raf.readLong();
+                }
+                while (raf.getFilePointer() < raf.length()) {
+                    int type = raf.readInt();
+                    long tidid = raf.readLong();
+                    
+                    switch (type) {
+                        case ABORT_RECORD:
+                            rollback(tidid, raf.getFilePointer()-LONG_SIZE-INT_SIZE);
+                            raf.readInt();
+                            raf.readLong();
+                            tidToFirstLogRecord.remove(tidid);
+                            break;
+                        case COMMIT_RECORD:
+                            tidToFirstLogRecord.remove(tidid);
+                            break;
+                        case BEGIN_RECORD:
+                            tidToFirstLogRecord.put(tidid, raf.getFilePointer()-LONG_SIZE-INT_SIZE);
+                            break;
+                        case UPDATE_RECORD:
+                            readPageData(raf);
+                            Page after = readPageData(raf);
+                            PageId pid = after.getId();
+                            Database.getBufferPool().discardPage(pid);
+                            DbFile file = Database.getCatalog().getDatabaseFile(pid.getTableId());
+                            file.writePage(after);
+                            break;
+                    }
+                    raf.readLong();
+                }
+                currentOffset = raf.getFilePointer();
+                Set<Long> remainTransaction = new HashSet<>();
+                for (long tidid: tidToFirstLogRecord.keySet()) {
+                    remainTransaction.add(tidid);
+                }
+                for (long tidid: remainTransaction) {
+                    rollback(tidid, raf.getFilePointer());
+                    tidToFirstLogRecord.remove(tidid);
+                }
             }
          }
     }
@@ -501,6 +587,33 @@ public class LogFile {
     /** Print out a human readable represenation of the log */
     public void print() throws IOException {
         // some code goes here
+        raf.seek(0);
+        if (raf.readLong() != -1) {
+            System.out.println("has checkpoint");
+        } else {
+            System.out.println("no checkpoint");
+        }
+        while (raf.getFilePointer() < raf.length()) {
+            int type = raf.readInt();
+            long tidid = raf.readLong();
+            switch (type) {
+                case ABORT_RECORD:
+                    System.out.println("Transaction " + tidid + " abort");
+                    break;
+                case COMMIT_RECORD:
+                    System.out.println("Transaction " + tidid + " commit");
+                    break;
+                case BEGIN_RECORD:
+                    System.out.println("Transaction " + tidid + " begin");
+                    break;
+                case UPDATE_RECORD:
+                    Page before = readPageData(raf);
+                    readPageData(raf);
+                    System.out.println("Transaction " + tidid + " modify data in page " + before.getId());
+                    break;
+            }
+            raf.readLong();
+       }
     }
 
     public  synchronized void force() throws IOException {
