@@ -2,7 +2,9 @@ package simpledb;
 
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -34,6 +36,7 @@ public class BufferPool {
     private Map<PageId, Page> pages_cache;
     private int numPages;
     private LockManager lockManager;
+    private Map<TransactionId, Collection<PageId>> dirtyPageBytid;  // track some page flush to disk, but dirty transaction not commit 
     
     /**
      * Creates a BufferPool that caches up to numPages pages.
@@ -43,6 +46,7 @@ public class BufferPool {
     public BufferPool(int numPages) {
         // some code goes here
         pages_cache = new ConcurrentHashMap<>();
+        dirtyPageBytid = new ConcurrentHashMap<>();
         this.numPages = numPages;
         lockManager = new LockManager();
     }
@@ -140,11 +144,23 @@ public class BufferPool {
         // some code goes here
         // not necessary for lab1|lab2
         if (commit) {
-            flushPages(tid);
+            HashSet<PageId> flushNotCommit = (HashSet<PageId>) dirtyPageBytid.get(tid);
+            for (PageId pid: pages_cache.keySet()) {
+                Page p = pages_cache.get(pid);
+                if (tid.equals(p.isDirty())) {
+                    // use current page contents as the before-image
+                    // for the next transaction that modifies this page.
+                    flushPage(pid);
+                    p.setBeforeImage();
+                } else if (flushNotCommit != null && flushNotCommit.contains(p.getId())) {
+                    p.setBeforeImage();  // some pages has been flush to disk but transaction commit until now, need set their image too
+                }
+            }
         } else {
             removePages(tid);
         }
         lockManager.releaseAllLock(tid);
+        dirtyPageBytid.remove(tid);
     }
 
     /**
@@ -226,13 +242,21 @@ public class BufferPool {
         // only necessary for lab5
     }
     
+    private void addDirtyPageTid(TransactionId tid, PageId pid) {
+        if (!dirtyPageBytid.containsKey(tid)) {
+            dirtyPageBytid.put(tid, new HashSet<>());
+        }
+        dirtyPageBytid.get(tid).add(pid);
+    }
+    
     private synchronized void removePages(TransactionId tid) throws IOException {
         for (PageId pid: pages_cache.keySet()) {
             Page p = pages_cache.get(pid);
-            if (p.isDirty() == tid) {
+            if (tid.equals(p.isDirty())) {
                 DbFile file = Database.getCatalog().getDatabaseFile(pid.getTableId());
                 Page page = file.readPage(pid);
                 pages_cache.put(pid, page);
+                page.markDirty(false, null);
             }
         }
     }
@@ -244,7 +268,9 @@ public class BufferPool {
         // not necessary for lab1|lab2
         for (PageId pid: pages_cache.keySet()) {
             Page p = pages_cache.get(pid);
-            if (p.isDirty() == tid) {
+            if (tid.equals(p.isDirty())) {
+                // use current page contents as the before-image
+                // for the next transaction that modifies this page.
                 flushPage(pid);
             }
         }
@@ -262,6 +288,16 @@ public class BufferPool {
             return;
         
         DbFile file = Database.getCatalog().getDatabaseFile(pid.getTableId());
+        
+        // append an update record to the log, with 
+        // a before-image and after-image.
+        TransactionId dirtier = page.isDirty();
+        addDirtyPageTid(dirtier, pid);  // some page flush to disk but that transaction not commit, we need track that
+        if (dirtier != null){
+          Database.getLogFile().logWrite(dirtier, page.getBeforeImage(), page);
+          Database.getLogFile().force();
+        }
+        
         file.writePage(page);
         page.markDirty(false, null);
     }
