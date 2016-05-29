@@ -13,11 +13,13 @@ public class LockManager {
     private static final int SHARED_LOCK = 0;
     private static final int EXCLUSIVE_LOCK = 1;
     private Map<PageId, Lock> locks;
+    private Map<PageId, Object> lockObject;
     private Map<TransactionId, Collection<TransactionId>> dependencyGraph;
     private Map<TransactionId, Collection<PageId>> locksByTransaction;
     
     public LockManager() {
-        locks = new ConcurrentHashMap<>();
+        locks = new HashMap<>();
+        lockObject = new ConcurrentHashMap<>();
         dependencyGraph = new ConcurrentHashMap<>();
         locksByTransaction = new ConcurrentHashMap<>();
     }
@@ -49,8 +51,9 @@ public class LockManager {
     }
     
     private void accquireExclusiveLock(TransactionId tid, PageId pid) throws TransactionAbortedException {
+        Object lock = getLock(pid);
         while (!hasExclusiveLock(tid, pid)) {
-            synchronized (pid) {
+            synchronized (lock) {
                 if (!locks.containsKey(pid)) {
                     locks.put(pid, new Lock(tid, EXCLUSIVE_LOCK));
                     removeDependencies(tid);
@@ -66,12 +69,13 @@ public class LockManager {
     }
     
     private void accquireSharedLock(TransactionId tid, PageId pid) throws TransactionAbortedException {
+        Object lock = getLock(pid);
         while (!hasSharedLock(tid, pid)) {
-           synchronized (pid) {
+           synchronized (lock) {
                if (!locks.containsKey(pid)) {
                    locks.put(pid, new Lock(tid, SHARED_LOCK));
                    removeDependencies(tid);
-               } else if (locks.get(pid) != null && locks.get(pid).lockType == SHARED_LOCK){
+               } else if (locks.get(pid).lockType == SHARED_LOCK){
                    locks.get(pid).getTransactions().add(tid);
                    removeDependencies(tid);
                } else {
@@ -82,16 +86,27 @@ public class LockManager {
     }
     
     private boolean hasSharedLock(TransactionId tid, PageId pid) {
-        synchronized(pid) {
+        Object lock = getLock(pid);
+        synchronized(lock) {
             return locks.containsKey(pid) && locks.get(pid).getTransactions().contains(tid);
         }
     }
     
-    private synchronized boolean hasExclusiveLock(TransactionId tid, PageId pid) {
-        return locks.containsKey(pid) && 
-               locks.get(pid).lockType == EXCLUSIVE_LOCK &&
-               locks.get(pid).getTransactions().size() == 1 &&
-               locks.get(pid).getTransactions().contains(tid);
+    private boolean hasExclusiveLock(TransactionId tid, PageId pid) {
+        Object lock = getLock(pid);
+        synchronized(lock) {
+            return locks.containsKey(pid) && 
+                   locks.get(pid).lockType == EXCLUSIVE_LOCK &&
+                   locks.get(pid).getTransactions().size() == 1 &&
+                   locks.get(pid).getTransactions().contains(tid);
+        }
+    }
+    
+    private Object getLock(PageId pid) {
+        if (!lockObject.containsKey(pid)) {
+            lockObject.put(pid, new Object());
+        }
+        return lockObject.get(pid);
     }
     
     private void addDependencies(TransactionId tid, Set<TransactionId> waittids) throws TransactionAbortedException {
@@ -157,7 +172,8 @@ public class LockManager {
     
     public void releaseLock(TransactionId tid, PageId pid) {
         // won't remove pid in locksByTransaction
-        synchronized (pid) {
+        Object lock = getLock(pid);
+        synchronized (lock) {
             if (locks.containsKey(pid)) {
                 Set<TransactionId> tids = locks.get(pid).tids;
                 tids.remove(tid);

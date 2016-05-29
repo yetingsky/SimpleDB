@@ -2,10 +2,7 @@ package simpledb;
 
 import java.io.*;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -142,19 +139,12 @@ public class BufferPool {
         throws IOException {
         // some code goes here
         // not necessary for lab1|lab2
-        for (PageId pid: pages_cache.keySet()) {
-            Page p = pages_cache.get(pid);
-            if (p.isDirty() == tid) {
-                if (commit) {
-                    flushPage(pid);
-                } else {
-                    DbFile file = Database.getCatalog().getDatabaseFile(pid.getTableId());
-                    Page page = file.readPage(pid);
-                    pages_cache.put(pid, page);
-                }
-            }
-            lockManager.releaseLock(tid, pid);
+        if (commit) {
+            flushPages(tid);
+        } else {
+            removePages(tid);
         }
+        lockManager.releaseAllLock(tid);
     }
 
     /**
@@ -235,6 +225,30 @@ public class BufferPool {
         // some code goes here
         // only necessary for lab5
     }
+    
+    private synchronized void removePages(TransactionId tid) throws IOException {
+        for (PageId pid: pages_cache.keySet()) {
+            Page p = pages_cache.get(pid);
+            if (p.isDirty() == tid) {
+                DbFile file = Database.getCatalog().getDatabaseFile(pid.getTableId());
+                Page page = file.readPage(pid);
+                pages_cache.put(pid, page);
+            }
+        }
+    }
+    
+    /** Write all pages of the specified transaction to disk.
+     */
+    public synchronized  void flushPages(TransactionId tid) throws IOException {
+        // some code goes here
+        // not necessary for lab1|lab2
+        for (PageId pid: pages_cache.keySet()) {
+            Page p = pages_cache.get(pid);
+            if (p.isDirty() == tid) {
+                flushPage(pid);
+            }
+        }
+    }
 
     /**
      * Flushes a certain page to disk
@@ -250,19 +264,6 @@ public class BufferPool {
         DbFile file = Database.getCatalog().getDatabaseFile(pid.getTableId());
         file.writePage(page);
         page.markDirty(false, null);
-    }
-
-    /** Write all pages of the specified transaction to disk.
-     */
-    public synchronized  void flushPages(TransactionId tid) throws IOException {
-        // some code goes here
-        // not necessary for lab1|lab2
-        for (PageId pid: pages_cache.keySet()) {
-            Page p = pages_cache.get(pid);
-            if (p.isDirty() == tid) {
-                flushPage(pid);
-            }
-        }
     }
 
     /**
