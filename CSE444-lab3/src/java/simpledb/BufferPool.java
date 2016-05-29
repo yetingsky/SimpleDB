@@ -285,20 +285,20 @@ public class BufferPool {
         pages_cache.remove(victim);
     }
     
-    private PageId randomEvictPolicy() throws DbException {
-        Random random = new Random();
-        int r = random.nextInt(pages_cache.size());
-        PageId victim = null;
-        int i = 0;
-        for (PageId pid: pages_cache.keySet()) {
-            if (r == i) {
-                victim = pid;
-                break;
-            }
-            i++;
-        }
-        return victim;
-    }
+//    private PageId randomEvictPolicy() throws DbException {
+//        Random random = new Random();
+//        int r = random.nextInt(pages_cache.size());
+//        PageId victim = null;
+//        int i = 0;
+//        for (PageId pid: pages_cache.keySet()) {
+//            if (r == i) {
+//                victim = pid;
+//                break;
+//            }
+//            i++;
+//        }
+//        return victim;
+//    }
     
     private PageId randomEvictPolicyNonDirty() throws DbException {
         List<PageId> pages = new ArrayList<>(pages_cache.keySet());

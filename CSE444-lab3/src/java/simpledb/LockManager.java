@@ -24,7 +24,6 @@ public class LockManager {
         locksByTransaction = new ConcurrentHashMap<>();
     }
     
-    
     public static class Lock {
         public int lockType;
         public Set<TransactionId> tids;
@@ -50,7 +49,53 @@ public class LockManager {
         addLockInTransaction(tid, pid);
     }
     
+    public void releaseLock(TransactionId tid, PageId pid) {
+        // won't remove pid in locksByTransaction
+        Object lock = getLock(pid);
+        synchronized (lock) {
+            if (locks.containsKey(pid)) {
+                Set<TransactionId> tids = locks.get(pid).tids;
+                tids.remove(tid);
+                if (tids.isEmpty()) {
+                    locks.remove(pid);
+                }
+            }
+        }
+
+        if (locksByTransaction.containsKey(tid)) {
+            Set<PageId> pids = (ConcurrentHashSet<PageId>) locksByTransaction.get(tid);
+            pids.remove(pid);
+            if (pids.isEmpty()) {
+                locksByTransaction.remove(tid);
+            }
+        }
+    }
+    
+    public void releaseAllLock(TransactionId tid) {
+        if (!locksByTransaction.containsKey(tid)) {
+            return;
+        }
+        
+        Set<PageId> pids = (ConcurrentHashSet<PageId>) locksByTransaction.get(tid);
+        Set<PageId> pidsCopy = new ConcurrentHashSet<>();
+        for (PageId pid: pids) {
+            pidsCopy.add(pid);
+        } 
+        
+        for (PageId pid: pidsCopy) {
+            releaseLock(tid, pid);
+        }
+    }
+    
+    public boolean holdsLock(TransactionId tid, PageId pid) {
+        return locks.containsKey(pid) && locks.get(pid).getTransactions().contains(tid);
+    }
+    
     private void accquireExclusiveLock(TransactionId tid, PageId pid) throws TransactionAbortedException {
+        // must use same lock Object to synchronize
+        // because PageId Objects may equal but not same object
+        // so use PageId object can not correctly synchronize
+        // use a hashmap map equal PageId to same object(lock)
         Object lock = getLock(pid);
         while (!hasExclusiveLock(tid, pid)) {
             synchronized (lock) {
@@ -169,46 +214,4 @@ public class LockManager {
         return false;
     }
     
-    
-    public void releaseLock(TransactionId tid, PageId pid) {
-        // won't remove pid in locksByTransaction
-        Object lock = getLock(pid);
-        synchronized (lock) {
-            if (locks.containsKey(pid)) {
-                Set<TransactionId> tids = locks.get(pid).tids;
-                tids.remove(tid);
-                if (tids.isEmpty()) {
-                    locks.remove(pid);
-                }
-            }
-        }
-
-        if (locksByTransaction.containsKey(tid)) {
-            Set<PageId> pids = (ConcurrentHashSet<PageId>) locksByTransaction.get(tid);
-            pids.remove(pid);
-            if (pids.isEmpty()) {
-                locksByTransaction.remove(tid);
-            }
-        }
-    }
-    
-    public void releaseAllLock(TransactionId tid) {
-        if (!locksByTransaction.containsKey(tid)) {
-            return;
-        }
-        
-        Set<PageId> pids = (ConcurrentHashSet<PageId>) locksByTransaction.get(tid);
-        Set<PageId> pidsCopy = new ConcurrentHashSet<>();
-        for (PageId pid: pids) {
-            pidsCopy.add(pid);
-        } 
-        
-        for (PageId pid: pidsCopy) {
-            releaseLock(tid, pid);
-        }
-    }
-    
-    public boolean holdsLock(TransactionId tid, PageId pid) {
-        return locks.containsKey(pid) && locks.get(pid).getTransactions().contains(tid);
-    }
 }
