@@ -50,7 +50,6 @@ public class LockManager {
     }
     
     public void releaseLock(TransactionId tid, PageId pid) {
-        // won't remove pid in locksByTransaction
         Object lock = getLock(pid);
         synchronized (lock) {
             if (locks.containsKey(pid)) {
@@ -115,6 +114,7 @@ public class LockManager {
     
     private void accquireSharedLock(TransactionId tid, PageId pid) throws TransactionAbortedException {
         Object lock = getLock(pid);
+        boolean hasAddDep = false;
         while (!hasSharedLock(tid, pid)) {
            synchronized (lock) {
                if (!locks.containsKey(pid)) {
@@ -124,7 +124,10 @@ public class LockManager {
                    locks.get(pid).getTransactions().add(tid);
                    removeDependencies(tid);
                } else {
-                   addDependencies(tid, locks.get(pid).getTransactions());
+                   if (!hasAddDep) {
+                       addDependencies(tid, locks.get(pid).getTransactions());
+                       hasAddDep = true;
+                   }
                }
            }
        }

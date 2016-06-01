@@ -156,11 +156,14 @@ public class BufferPool {
                     p.setBeforeImage();  // some pages has been flush to disk but transaction commit until now, need set their image too
                 }
             }
+//            Database.getLogFile().logCommit(tid);
         } else {
             removePages(tid);
+//            Database.getLogFile().logAbort(tid);
         }
+        
+        dirtyPageBytid.remove(tid);        
         lockManager.releaseAllLock(tid);
-        dirtyPageBytid.remove(tid);
     }
 
     /**
